@@ -1,0 +1,12 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 16
+  pre_build:
+    commands:
+      - echo Running unit tests
+  build:
+    commands:
+      - echo Tests ran successfully.

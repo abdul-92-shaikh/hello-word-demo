@@ -1,0 +1,20 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 20
+  build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - REPOSITORY_BASE=$AWS_ACCOUNT_IMAGES.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_BASE
+      - IMAGE_TAG=`./code_build/get_image_tag.sh`
+      - echo Building and pushing Dockerimage
+      - echo "Image tag * $IMAGE_TAG *"
+      - ./code_build/build_image.sh $REPOSITORY_BASE $IMAGE_TAG production
+      - echo Saving image version to secret store
+      - NEW_SECRET_VALUE=`aws secretsmanager get-secret-value --secret-id $ECRIMAGES_SECRET --query SecretString --output text | jq -c -M --arg version "${IMAGE_TAG}" --arg app "${APP}_desired"  '.[$app] = $version'`
+      - aws secretsmanager put-secret-value --secret-id $ECRIMAGES_SECRET --secret-string $NEW_SECRET_VALUE
+      - echo Triggering deployment pipeline
+      - aws codepipeline start-pipeline-execution --name $DEPLOY_PIPELINE
